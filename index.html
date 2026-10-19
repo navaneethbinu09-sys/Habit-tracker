@@ -1,1 +1,486 @@
- https://github.com/HabitRPG/habitica.git
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b1020">
+  <title>Habit Quest — Daily Progress</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg:#080d19; --panel:#111a2d; --panel2:#172239; --line:#263653;
+      --text:#f2f6ff; --muted:#9aa9c4; --blue:#6ea8ff; --cyan:#61e4d5;
+      --green:#65e6a5; --orange:#ffb86b; --pink:#ff7eb6; --danger:#ff7b86;
+      --radius:20px; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; background:radial-gradient(ellipse at top left,#142445 0,transparent 38%),var(--bg); color:var(--text); }
+    button,input,select { font:inherit; }
+    button { cursor:pointer; }
+    .shell { max-width:1120px; margin:0 auto; padding:22px 16px 50px; }
+    header { display:flex; align-items:center; justify-content:space-between; gap:14px; margin-bottom:22px; }
+    .brand { display:flex; align-items:center; gap:12px; min-width:0; }
+    .logo { width:46px; height:46px; display:grid; place-items:center; border-radius:15px; background:linear-gradient(135deg,#4f8cff,#6d5efc); box-shadow:0 8px 26px #416bdf44; font-size:24px; }
+    h1 { margin:0; font-size:clamp(20px,4vw,27px); letter-spacing:-.7px; }
+    .sub { color:var(--muted); font-size:13px; margin-top:3px; }
+    .btn { border:1px solid var(--line); border-radius:12px; padding:10px 13px; color:var(--text); background:#17243b; font-weight:650; }
+    .btn.primary { color:#071326; border:0; background:linear-gradient(135deg,#8abaff,#6be1d5); }
+    .btn.danger { color:#ffadb4; }
+    .btn:disabled { opacity:.5; cursor:not-allowed; }
+    .status { display:flex; align-items:center; gap:7px; color:var(--muted); font-size:12px; margin-top:6px; }
+    .dot { width:8px; height:8px; border-radius:50%; background:var(--orange); display:inline-block; }
+    .dot.online { background:var(--green); }
+    .grid { display:grid; grid-template-columns:repeat(12,minmax(0,1fr)); gap:15px; }
+    .card { background:linear-gradient(160deg,#141f34ee,#10182aee); border:1px solid var(--line); border-radius:var(--radius); padding:18px; box-shadow:0 12px 34px #00000016; min-width:0; }
+    .hero { grid-column:span 12; display:grid; grid-template-columns:1.4fr 1fr; gap:20px; align-items:center; }
+    .eyebrow { color:var(--cyan); text-transform:uppercase; letter-spacing:1.7px; font-size:11px; font-weight:800; }
+    .hero h2 { font-size:clamp(24px,5vw,36px); letter-spacing:-1.2px; margin:8px 0; }
+    .hero p { color:var(--muted); margin:0; line-height:1.5; }
+    .xp-box { background:#0c1425; border:1px solid #263858; border-radius:17px; padding:15px; }
+    .xp-top { display:flex; justify-content:space-between; gap:10px; align-items:center; margin-bottom:11px; }
+    .level { color:#071326; background:linear-gradient(135deg,#a8caff,#74e7da); padding:6px 10px; border-radius:10px; font-size:12px; font-weight:900; white-space:nowrap; }
+    .xp-number { color:var(--muted); font-size:12px; }
+    .progress { height:9px; border-radius:99px; background:#25324b; overflow:hidden; }
+    .progress > span { display:block; height:100%; width:0; background:linear-gradient(90deg,#6ea8ff,#61e4d5); border-radius:99px; transition:width .25s; }
+    .stats { grid-column:span 12; display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:15px; }
+    .stat { padding:16px; }
+    .stat-label { color:var(--muted); font-size:12px; }
+    .stat-value { font-size:28px; font-weight:850; margin:8px 0 3px; letter-spacing:-.8px; }
+    .stat-note { color:var(--muted); font-size:11px; }
+    .left { grid-column:span 7; }
+    .right { grid-column:span 5; }
+    .full { grid-column:span 12; }
+    .card-head { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:14px; }
+    .card-head h3 { margin:0; font-size:16px; letter-spacing:-.25px; }
+    .small { font-size:12px; color:var(--muted); }
+    .habit-list { display:grid; gap:9px; }
+    .habit { display:flex; align-items:center; gap:12px; border:1px solid #25334c; background:#121d31; border-radius:15px; padding:12px; }
+    .habit-check { appearance:none; width:23px; height:23px; flex:0 0 23px; border:2px solid #526580; border-radius:8px; display:grid; place-items:center; margin:0; cursor:pointer; }
+    .habit-check:checked { background:var(--green); border-color:var(--green); }
+    .habit-check:checked::after { content:"✓"; color:#092016; font-weight:1000; font-size:15px; }
+    .habit-name { flex:1; min-width:0; font-weight:650; overflow-wrap:anywhere; }
+    .habit-meta { color:var(--muted); font-size:11px; margin-top:4px; }
+    .habit.done .habit-name { color:#91a4bd; text-decoration:line-through; }
+    .streak { color:#ffbf72; white-space:nowrap; font-size:12px; font-weight:750; }
+    .delete { border:0; background:transparent; color:#73839f; font-size:19px; padding:3px 4px; }
+    .delete:hover { color:var(--danger); }
+    .add-row { display:flex; gap:8px; margin-top:13px; }
+    .field { min-width:0; width:100%; background:#0b1425; border:1px solid var(--line); border-radius:12px; padding:11px 12px; color:var(--text); outline:none; }
+    .field:focus { border-color:var(--blue); }
+    .calendar-nav { display:flex; align-items:center; gap:8px; }
+    .icon-btn { width:32px; height:32px; border-radius:10px; border:1px solid var(--line); background:#17243b; color:var(--text); }
+    .calendar-title { font-weight:750; min-width:112px; text-align:center; }
+    .calendar { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:5px; }
+    .weekday { text-align:center; color:var(--muted); font-size:10px; padding:5px 0; }
+    .day { min-height:55px; border:1px solid #24324a; background:#0d1627; border-radius:10px; padding:6px 3px; color:var(--text); text-align:center; position:relative; }
+    .day.muted { opacity:.35; }
+    .day.today { border-color:var(--blue); box-shadow:inset 0 0 0 1px #6ea8ff55; }
+    .day.selected { background:#1c3152; border-color:var(--cyan); }
+    .day-num { font-size:12px; }
+    .day-dot { width:6px; height:6px; border-radius:50%; display:inline-block; background:var(--green); margin-top:6px; }
+    .day-rate { font-size:9px; color:var(--muted); margin-top:4px; }
+    .chart { display:flex; align-items:flex-end; gap:9px; height:150px; padding:12px 0 0; }
+    .bar-wrap { flex:1; min-width:0; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:7px; height:100%; }
+    .bar-val { color:var(--muted); font-size:10px; }
+    .bar { width:min(100%,30px); min-height:3px; border-radius:7px 7px 3px 3px; background:linear-gradient(180deg,#61e4d5,#4f8cff); transition:height .25s; }
+    .bar-label { font-size:10px; color:var(--muted); }
+    .summary-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+    .summary-item { background:#0c1526; border:1px solid #24324a; border-radius:14px; padding:13px; }
+    .summary-item strong { display:block; font-size:22px; margin-bottom:4px; }
+    .summary-item span { color:var(--muted); font-size:11px; }
+    .reminder-row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+    .reminder-row .field { width:auto; flex:1; min-width:130px; }
+    .notice { border:1px solid #6d572e; background:#2a2113; color:#f6d59a; padding:12px; border-radius:13px; font-size:12px; line-height:1.5; margin-bottom:15px; }
+    .empty { color:var(--muted); font-size:13px; padding:18px 6px; text-align:center; }
+    .auth { max-width:560px; margin:45px auto; }
+    .auth h2 { margin-top:0; }
+    .auth p { color:var(--muted); line-height:1.6; }
+    .setup-list { padding-left:20px; color:var(--muted); line-height:1.7; font-size:13px; }
+    .hidden { display:none !important; }
+    footer { text-align:center; color:#71809a; font-size:11px; padding-top:24px; line-height:1.6; }
+    @media (max-width:760px) {
+      .shell { padding:16px 12px 34px; }
+      .hero { grid-template-columns:1fr; gap:16px; }
+      .stats { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+      .left,.right { grid-column:span 12; }
+      .card { padding:15px; border-radius:17px; }
+      .stat-value { font-size:25px; }
+      .day { min-height:48px; }
+      .header-btn { padding:9px 10px; font-size:12px; }
+    }
+    @media (prefers-reduced-motion:reduce) { * { transition:none !important; } }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div class="brand">
+        <div class="logo">⚡</div>
+        <div>
+          <h1>Habit Quest</h1>
+          <div class="sub">Small wins. Serious progress.</div>
+          <div class="status"><span id="statusDot" class="dot"></span><span id="statusText">Connecting…</span></div>
+        </div>
+      </div>
+      <button class="btn header-btn" id="signOutBtn" hidden>Sign out</button>
+    </header>
+
+    <section id="setupNotice" class="notice hidden">
+      <strong>Firebase setup needed.</strong> Add your Firebase web app configuration in the marked section of <code>index.html</code>, then enable Google sign-in and Firestore. Follow the setup guide that came with this file.
+    </section>
+
+    <section id="authPanel" class="card auth hidden">
+      <div class="eyebrow">Your personal dashboard</div>
+      <h2>Save your progress everywhere.</h2>
+      <p>Sign in with Google to sync habits, check-ins, XP and calendar history between your phone and laptop.</p>
+      <button class="btn primary" id="signInBtn">Continue with Google</button>
+      <p class="small">Only your signed-in account can read or change its own tracker data when the recommended Firestore rules are installed.</p>
+      <div id="authError" class="small"></div>
+    </section>
+
+    <section id="app" class="hidden">
+      <section class="grid">
+        <div class="card hero">
+          <div>
+            <div class="eyebrow" id="greeting">YOUR DAILY QUEST</div>
+            <h2 id="heroTitle">Show up for yourself.</h2>
+            <p id="heroSubtitle">Every completed habit earns 10 XP. Keep going and level up.</p>
+          </div>
+          <div class="xp-box">
+            <div class="xp-top">
+              <div><div class="small">YOUR RANK</div><div id="rankName" style="font-weight:850;font-size:19px;margin-top:3px">Rookie</div></div>
+              <span class="level" id="levelBadge">LEVEL 1</span>
+            </div>
+            <div class="progress"><span id="xpProgress"></span></div>
+            <div class="xp-top" style="margin:9px 0 0"><span class="xp-number" id="xpCaption">0 / 100 XP to next level</span><span class="xp-number" id="xpTotal">0 total XP</span></div>
+          </div>
+        </div>
+
+        <div class="stats">
+          <div class="card stat"><div class="stat-label">TODAY'S QUESTS</div><div class="stat-value" id="todayCount">0/0</div><div class="stat-note">Habits completed</div></div>
+          <div class="card stat"><div class="stat-label">TODAY'S PROGRESS</div><div class="stat-value" id="todayRate">0%</div><div class="stat-note">One step at a time</div></div>
+          <div class="card stat"><div class="stat-label">ACTIVE STREAK</div><div class="stat-value" id="activeStreak">0 🔥</div><div class="stat-note">Best current habit streak</div></div>
+          <div class="card stat"><div class="stat-label">TOTAL CHECK-INS</div><div class="stat-value" id="totalChecks">0</div><div class="stat-note">All-time completions</div></div>
+        </div>
+
+        <section class="card left">
+          <div class="card-head"><div><h3>Today's habits</h3><div class="small" id="todayLabel"></div></div><span class="level" id="dailyBadge">0% DONE</span></div>
+          <div id="habitList" class="habit-list"></div>
+          <form id="addHabitForm" class="add-row">
+            <input class="field" id="newHabitName" maxlength="70" placeholder="Add a new habit…" autocomplete="off" required>
+            <button class="btn primary" type="submit">+ Add</button>
+          </form>
+          <div class="small" style="margin-top:9px">Tip: make habits specific and realistic. Check them off as you go.</div>
+        </section>
+
+        <section class="card right">
+          <div class="card-head"><h3>Monthly calendar</h3><div class="calendar-nav"><button class="icon-btn" id="prevMonth" aria-label="Previous month">‹</button><span class="calendar-title" id="calendarTitle"></span><button class="icon-btn" id="nextMonth" aria-label="Next month">›</button></div></div>
+          <div class="calendar" id="calendar"></div>
+          <div class="small" id="calendarHint" style="margin-top:12px">Select a date to view its check-ins.</div>
+        </section>
+
+        <section class="card left">
+          <div class="card-head"><div><h3>Weekly progress</h3><div class="small">Completion rate, last 7 days</div></div><span class="small" id="weeklyRate">0% avg.</span></div>
+          <div id="weeklyChart" class="chart"></div>
+        </section>
+
+        <section class="card right">
+          <div class="card-head"><div><h3>Weekly summary</h3><div class="small">Your last 7 days</div></div></div>
+          <div class="summary-grid">
+            <div class="summary-item"><strong id="weekDone">0</strong><span>Habits completed</span></div>
+            <div class="summary-item"><strong id="weekPerfect">0</strong><span>Perfect days</span></div>
+            <div class="summary-item"><strong id="weekBest">0%</strong><span>Best day</span></div>
+            <div class="summary-item"><strong id="weekAvg">0%</strong><span>Average completion</span></div>
+          </div>
+        </section>
+
+        <section class="card left">
+          <div class="card-head"><div><h3>Monthly summary</h3><div class="small" id="monthSummaryLabel"></div></div></div>
+          <div class="summary-grid">
+            <div class="summary-item"><strong id="monthDone">0</strong><span>Habits completed</span></div>
+            <div class="summary-item"><strong id="monthPerfect">0</strong><span>Perfect days</span></div>
+            <div class="summary-item"><strong id="monthAvg">0%</strong><span>Average completion</span></div>
+            <div class="summary-item"><strong id="monthActive">0</strong><span>Days with progress</span></div>
+          </div>
+        </section>
+
+        <section class="card right">
+          <div class="card-head"><div><h3>Daily reminder</h3><div class="small">A nudge to check in</div></div>🔔</div>
+          <div class="reminder-row">
+            <input class="field" type="time" id="reminderTime" value="20:30" aria-label="Reminder time">
+            <button class="btn" id="saveReminderBtn">Save</button>
+          </div>
+          <div class="small" id="reminderStatus" style="margin-top:11px">Reminder is off.</div>
+          <button class="btn" id="enableReminderBtn" style="margin-top:12px;width:100%">Enable notifications</button>
+        </section>
+      </section>
+    </section>
+    <footer>Habit Quest · Built with GitHub Pages + Firebase · Your XP is based on saved check-ins.<br>Reminders run while this page is open; see the setup guide for the limitation.</footer>
+  </main>
+
+  <!--
+    FIREBASE CONFIGURATION:
+    1. Create a Firebase project and register a Web App.
+    2. Copy its config object from Firebase console into the object below.
+    3. Enable Authentication > Google and create a Cloud Firestore database.
+    Firebase's public web config is not a password; secure data with Firestore rules.
+  -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+    import { getFirestore, collection, doc, addDoc, deleteDoc, setDoc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+    // REPLACE the placeholder values with your Firebase project's web config.
+    const firebaseConfig = {
+      apiKey: "PASTE_API_KEY_HERE",
+      authDomain: "PASTE_PROJECT_ID_HERE.firebaseapp.com",
+      projectId: "PASTE_PROJECT_ID_HERE",
+      appId: "PASTE_APP_ID_HERE"
+    };
+
+    const $ = id => document.getElementById(id);
+    const todayKey = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+    const parseDay = key => { const [y,m,d] = key.split("-").map(Number); return new Date(y,m-1,d,12); };
+    const shiftDay = (key, amount) => { const d=parseDay(key); d.setDate(d.getDate()+amount); return todayKey(d); };
+    const monthKey = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+    const dateLabel = d => d.toLocaleDateString(undefined,{weekday:"long",month:"long",day:"numeric"});
+    const esc = s => String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+    const rankFor = level => level>=20?"Legend":level>=10?"Elite":level>=5?"Achiever":level>=3?"Focused":"Rookie";
+
+    let app, auth, db, currentUser=null, habits=[], days={}, selectedDate=todayKey(), calendarDate=new Date(), unsubs=[];
+    let reminderTime=localStorage.getItem("hq-reminder-time") || "20:30";
+    let reminderEnabled=localStorage.getItem("hq-reminder-enabled")==="true";
+    let lastReminderKey=localStorage.getItem("hq-last-reminder") || "";
+    let reminderTimer=null;
+    const defaultHabits = [
+      "JEE study","Revision","Exercise","Reading","Sleep on time"
+    ];
+
+    function setStatus(message,online=false) { $("statusText").textContent=message; $("statusDot").classList.toggle("online",online); }
+    function show(id, yes=true) { $(id).classList.toggle("hidden",!yes); }
+    function cleanUnsubs() { unsubs.forEach(fn=>fn()); unsubs=[]; }
+    function isConfigReady() { return firebaseConfig.apiKey!=="PASTE_API_KEY_HERE" && firebaseConfig.projectId!=="PASTE_PROJECT_ID_HERE" && firebaseConfig.appId!=="PASTE_APP_ID_HERE"; }
+    function dateCompleted(key, habitId) { return (days[key]?.completed || []).includes(habitId); }
+    function habitStreak(habitId) {
+      let cursor=todayKey();
+      if (!dateCompleted(cursor,habitId)) cursor=shiftDay(cursor,-1);
+      let count=0;
+      for(let i=0;i<4000;i++) { if(!dateCompleted(cursor,habitId)) break; count++; cursor=shiftDay(cursor,-1); }
+      return count;
+    }
+    function completionCountForDate(key) { return habits.reduce((n,h)=>n+(dateCompleted(key,h.id)?1:0),0); }
+    function rateForDate(key) { return habits.length ? Math.round(completionCountForDate(key)/habits.length*100) : 0; }
+    function allTimeChecks() { return Object.values(days).reduce((sum,d)=>sum+(d.completed||[]).length,0); }
+    function allTimeXP() { return allTimeChecks()*10; }
+    function dayHasAny(key) { return (days[key]?.completed||[]).length>0; }
+
+    async function seedHabitsIfEmpty() {
+      if (!currentUser || habits.length) return;
+      // Avoid racing the live listener: starter habits are created only if the collection is still empty.
+      for (const [index,name] of defaultHabits.entries()) {
+        await addDoc(collection(db,"users",currentUser.uid,"habits"), { name, order:index, createdAt:serverTimestamp() });
+      }
+    }
+
+    function renderHabits() {
+      const list=$("habitList");
+      if(!habits.length) { list.innerHTML='<div class="empty">No habits yet. Add your first quest above.</div>'; return; }
+      list.innerHTML=habits.map(h=>{
+        const done=dateCompleted(selectedDate,h.id);
+        return `<div class="habit ${done?"done":""}">
+          <input class="habit-check" type="checkbox" data-toggle="${esc(h.id)}" ${done?"checked":""} aria-label="Mark ${esc(h.name)} complete">
+          <div style="flex:1;min-width:0"><div class="habit-name">${esc(h.name)}</div><div class="habit-meta">${done?"Quest complete":"Daily quest"} · ${habitStreak(h.id)} day streak</div></div>
+          <span class="streak">🔥 ${habitStreak(h.id)}</span>
+          <button class="delete" data-delete="${esc(h.id)}" aria-label="Delete ${esc(h.name)}" title="Delete habit">×</button>
+        </div>`;
+      }).join("");
+      list.querySelectorAll("[data-toggle]").forEach(el=>el.addEventListener("change",()=>toggleHabit(el.dataset.toggle,el.checked)));
+      list.querySelectorAll("[data-delete]").forEach(el=>el.addEventListener("click",()=>removeHabit(el.dataset.delete)));
+    }
+
+    async function toggleHabit(habitId,checked) {
+      if(!currentUser) return;
+      const key=selectedDate;
+      const completed=new Set(days[key]?.completed||[]);
+      checked?completed.add(habitId):completed.delete(habitId);
+      try {
+        await setDoc(doc(db,"users",currentUser.uid,"days",key),{date:key,completed:[...completed],updatedAt:serverTimestamp()},{merge:true});
+      } catch(e) { alert("Couldn't save that check-in. Check your connection and Firestore rules."); console.error(e); }
+    }
+
+    async function removeHabit(id) {
+      const habit=habits.find(h=>h.id===id);
+      if(!habit || !confirm(`Delete "${habit.name}"? Past check-ins stay in your history, but this habit will no longer count toward your daily rate.`)) return;
+      try { await deleteDoc(doc(db,"users",currentUser.uid,"habits",id)); }
+      catch(e) { alert("Couldn't delete the habit. Check your connection and Firestore rules."); console.error(e); }
+    }
+
+    function renderCalendar() {
+      const y=calendarDate.getFullYear(), m=calendarDate.getMonth();
+      $("calendarTitle").textContent=calendarDate.toLocaleDateString(undefined,{month:"short",year:"numeric"});
+      const first=new Date(y,m,1,12), startOffset=(first.getDay()+6)%7;
+      const daysInMonth=new Date(y,m+1,0).getDate();
+      const prevMonthDays=new Date(y,m,0).getDate();
+      const weekdays=["M","T","W","T","F","S","S"];
+      let html=weekdays.map(d=>`<div class="weekday">${d}</div>`).join("");
+      for(let i=0;i<42;i++){
+        let n, d, inMonth=true;
+        if(i<startOffset){n=prevMonthDays-startOffset+i+1;d=new Date(y,m-1,n,12);inMonth=false;}
+        else if(i>=startOffset+daysInMonth){n=i-(startOffset+daysInMonth)+1;d=new Date(y,m+1,n,12);inMonth=false;}
+        else {n=i-startOffset+1;d=new Date(y,m,n,12);}
+        const key=todayKey(d), count=completionCountForDate(key), rate=rateForDate(key);
+        html+=`<button class="day ${inMonth?"":"muted"} ${key===todayKey()?"today":""} ${key===selectedDate?"selected":""}" data-day="${key}" aria-label="${key}, ${count} habits completed">
+          <div class="day-num">${n}</div>${count?`<div class="day-dot"></div><div class="day-rate">${rate}%</div>`:""}
+        </button>`;
+      }
+      $("calendar").innerHTML=html;
+      $("calendar").querySelectorAll("[data-day]").forEach(el=>el.addEventListener("click",()=>{selectedDate=el.dataset.day;renderAll();}));
+      $("calendarHint").textContent=selectedDate===todayKey()?"Viewing today.":`Viewing ${dateLabel(parseDay(selectedDate))}. Check-ins can be edited for this date.`;
+    }
+
+    function makeBarChart() {
+      const keys=Array.from({length:7},(_,i)=>shiftDay(todayKey(),i-6));
+      const rates=keys.map(k=>rateForDate(k));
+      $("weeklyRate").textContent=`${Math.round(rates.reduce((a,b)=>a+b,0)/7)}% avg.`;
+      $("weeklyChart").innerHTML=keys.map((k,i)=>{
+        const rate=rates[i], d=parseDay(k), label=d.toLocaleDateString(undefined,{weekday:"short"});
+        return `<div class="bar-wrap"><div class="bar-val">${rate}%</div><div class="bar" style="height:${Math.max(3,rate)}%"></div><div class="bar-label">${label}</div></div>`;
+      }).join("");
+    }
+
+    function renderSummaries() {
+      const today=todayKey(), weekKeys=Array.from({length:7},(_,i)=>shiftDay(today,i-6));
+      const weekRates=weekKeys.map(rateForDate), weekDone=weekKeys.reduce((s,k)=>s+completionCountForDate(k),0);
+      $("weekDone").textContent=weekDone;
+      $("weekPerfect").textContent=weekKeys.filter(k=>habits.length>0&&rateForDate(k)===100).length;
+      $("weekBest").textContent=`${Math.max(0,...weekRates)}%`;
+      $("weekAvg").textContent=`${Math.round(weekRates.reduce((a,b)=>a+b,0)/7)}%`;
+      const y=calendarDate.getFullYear(),m=calendarDate.getMonth(), monthDays=new Date(y,m+1,0).getDate();
+      const keys=Array.from({length:monthDays},(_,i)=>todayKey(new Date(y,m,i+1,12)));
+      const active=keys.filter(dayHasAny).length;
+      $("monthSummaryLabel").textContent=calendarDate.toLocaleDateString(undefined,{month:"long",year:"numeric"});
+      $("monthDone").textContent=keys.reduce((s,k)=>s+completionCountForDate(k),0);
+      $("monthPerfect").textContent=keys.filter(k=>habits.length>0&&rateForDate(k)===100).length;
+      $("monthAvg").textContent=`${Math.round(keys.reduce((s,k)=>s+rateForDate(k),0)/monthDays)}%`;
+      $("monthActive").textContent=active;
+    }
+
+    function renderTop() {
+      const total=allTimeChecks(), xp=allTimeXP(), level=Math.floor(xp/100)+1, into=xp%100;
+      const rate=rateForDate(todayKey()), count=completionCountForDate(todayKey());
+      $("levelBadge").textContent=`LEVEL ${level}`;
+      $("rankName").textContent=rankFor(level);
+      $("xpProgress").style.width=`${into}%`;
+      $("xpCaption").textContent=`${into} / 100 XP to next level`;
+      $("xpTotal").textContent=`${xp} total XP`;
+      $("todayCount").textContent=`${count}/${habits.length}`;
+      $("todayRate").textContent=`${rate}%`;
+      $("activeStreak").textContent=`${Math.max(0,...habits.map(h=>habitStreak(h.id)))} 🔥`;
+      $("totalChecks").textContent=total;
+      $("dailyBadge").textContent=`${rate}% DONE`;
+      $("todayLabel").textContent=dateLabel(new Date());
+      const done=count===habits.length&&habits.length>0;
+      $("heroTitle").textContent=done?"Daily quest complete!":rate>=50?"You're building momentum.":"Show up for yourself.";
+      $("heroSubtitle").textContent=done?"Excellent work. Your consistency is the real win.":"Every completed habit earns 10 XP. Keep going and level up.";
+      $("greeting").textContent=new Date().toLocaleDateString(undefined,{weekday:"long"}).toUpperCase()+" · YOUR DAILY QUEST";
+    }
+
+    function renderAll() {
+      renderTop(); renderHabits(); renderCalendar(); makeBarChart(); renderSummaries();
+    }
+
+    async function addHabit(name) {
+      name=name.trim();
+      if(!name||!currentUser) return;
+      if(habits.some(h=>h.name.toLowerCase()===name.toLowerCase())) { alert("That habit already exists."); return; }
+      try { await addDoc(collection(db,"users",currentUser.uid,"habits"),{name,order:habits.length,createdAt:serverTimestamp()}); $("newHabitName").value=""; }
+      catch(e) { alert("Couldn't add the habit. Check your connection and Firestore rules."); console.error(e); }
+    }
+
+    function watchUserData() {
+      cleanUnsubs();
+      const habitCol=collection(db,"users",currentUser.uid,"habits");
+      unsubs.push(onSnapshot(habitCol,async snap=>{
+        habits=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.order??0)-(b.order??0));
+        renderAll();
+        if(snap.empty && !window.__hqSeeded) { window.__hqSeeded=true; await seedHabitsIfEmpty(); }
+      },err=>{setStatus("Habit sync error",false);console.error(err);}));
+      const dayCol=collection(db,"users",currentUser.uid,"days");
+      unsubs.push(onSnapshot(dayCol,snap=>{
+        days={};
+        snap.docs.forEach(d=>{const data=d.data();days[data.date||d.id]={completed:Array.isArray(data.completed)?data.completed:[]};});
+        setStatus("Synced to cloud",true); renderAll();
+      },err=>{setStatus("Progress sync error",false);console.error(err);}));
+    }
+
+    function setReminderUI() {
+      $("reminderTime").value=reminderTime;
+      $("reminderStatus").textContent=reminderEnabled?`Reminder enabled for ${reminderTime} on this device while the page is open.`:"Reminder is off.";
+      $("enableReminderBtn").textContent=reminderEnabled?"Notifications enabled":"Enable notifications";
+    }
+    async function enableNotifications() {
+      if(!("Notification" in window)) { alert("This browser doesn't support notifications. You can still set a reminder time here."); return; }
+      const permission=await Notification.requestPermission();
+      if(permission==="granted") {
+        reminderEnabled=true; localStorage.setItem("hq-reminder-enabled","true"); setReminderUI();
+        new Notification("Habit Quest",{body:"Notifications are enabled. Keep your daily quests moving!"});
+      } else { alert("Notifications weren't allowed. Enable them in your browser's site settings and try again."); }
+    }
+    function checkReminder() {
+      if(!reminderEnabled||!("Notification" in window)||Notification.permission!=="granted") return;
+      const now=new Date(), time=`${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}`, key=todayKey();
+      if(time===reminderTime && lastReminderKey!==key) {
+        lastReminderKey=key; localStorage.setItem("hq-last-reminder",key);
+        if(rateForDate(key)<100) new Notification("Your Habit Quest",{body:`You've completed ${completionCountForDate(key)} of ${habits.length} habits today. Take a moment to check in.`});
+      }
+    }
+
+    $("addHabitForm").addEventListener("submit",e=>{e.preventDefault();addHabit($("newHabitName").value);});
+    $("prevMonth").addEventListener("click",()=>{calendarDate=new Date(calendarDate.getFullYear(),calendarDate.getMonth()-1,1,12);renderAll();});
+    $("nextMonth").addEventListener("click",()=>{calendarDate=new Date(calendarDate.getFullYear(),calendarDate.getMonth()+1,1,12);renderAll();});
+    $("saveReminderBtn").addEventListener("click",()=>{
+      reminderTime=$("reminderTime").value||"20:30";
+      localStorage.setItem("hq-reminder-time",reminderTime); setReminderUI();
+      $("reminderStatus").textContent=`Reminder time saved: ${reminderTime}. Keep this page open for the reminder to fire.`;
+    });
+    $("enableReminderBtn").addEventListener("click",enableNotifications);
+    $("signInBtn").addEventListener("click",async()=>{
+      $("authError").textContent="";
+      try { await signInWithPopup(auth,new GoogleAuthProvider()); }
+      catch(e) {
+        if(e.code==="auth/popup-blocked"||e.code==="auth/operation-not-supported-in-this-environment") {
+          try { await signInWithRedirect(auth,new GoogleAuthProvider()); } catch(err) { $("authError").textContent=err.message; }
+        } else { $("authError").textContent=e.message; }
+      }
+    });
+    $("signOutBtn").addEventListener("click",()=>signOut(auth));
+    $("reminderTime").value=reminderTime;
+    setReminderUI();
+    if(reminderTimer) clearInterval(reminderTimer);
+    reminderTimer=setInterval(checkReminder,15000);
+
+    if(!isConfigReady()) {
+      setStatus("Setup required",false); show("setupNotice"); show("authPanel"); $("signInBtn").disabled=true;
+      $("authError").textContent="First add your Firebase config in index.html, then reload this page.";
+    } else {
+      try {
+        app=initializeApp(firebaseConfig); auth=getAuth(app); db=getFirestore(app);
+        getRedirectResult(auth).catch(e=>console.error(e));
+        onAuthStateChanged(auth,user=>{
+          currentUser=user;
+          if(user) {
+            show("authPanel",false); show("app"); $("signOutBtn").hidden=false;
+            setStatus("Connecting to cloud…",false); window.__hqSeeded=false; watchUserData();
+          } else {
+            cleanUnsubs(); habits=[]; days={}; show("app",false); show("authPanel"); $("signOutBtn").hidden=true;
+            setStatus("Sign in to sync",false);
+          }
+        });
+      } catch(e) {
+        setStatus("Firebase configuration error",false); show("setupNotice"); show("authPanel");
+        $("authError").textContent=e.message; console.error(e);
+      }
+    }
+  </script>
+</body>
+</html>
